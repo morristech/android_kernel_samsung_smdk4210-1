@@ -1,12 +1,12 @@
 config XVMALLOC
 	bool
-	default n
+	default y
 
 config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS
 	select XVMALLOC
-	default n
+	default y
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
 	  Pages written to these disks are compressed and stored in memory
@@ -23,7 +23,7 @@ config ZRAM_NUM_DEVICES
 	int "Default number of zram devices"
 	depends on ZRAM
 	range 1 32
-	default 1
+	default 3
 	help
 	  Select default number of zram devices. You can override this value
 	  using 'num_devices' module parameter.
@@ -38,7 +38,7 @@ config ZRAM_DEFAULT_DISKSIZE
 config ZRAM_DEBUG
 	bool "Compressed RAM block device debug support"
 	depends on ZRAM
-	default n
+	default y
 	help
 	  This option adds additional debugging code to the compressed
 	  RAM block device driver.
@@ -46,7 +46,7 @@ config ZRAM_DEBUG
 config ZRAM_FOR_ANDROID
 	bool "Optimize zram behavior for android"
 	depends on ZRAM && ANDROID
-	default n
+	default y
 	help
 	  This option enables modified zram behavior optimized for android
 
