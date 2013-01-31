@@ -28,20 +28,28 @@ config ZRAM_NUM_DEVICES
 	  Select default number of zram devices. You can override this value
 	  using 'num_devices' module parameter.
 
+config ZRAM_DEFAULT_PERCENTAGE
+	int "Default number of zram percentage"
+	depends on ZRAM
+	range 10 80
+	default 25
+	help
+	  Select default zram disk size: percentage of total RAM
+
+config ZRAM_DEBUG
+	bool "Compressed RAM block device debug support"
+	depends on ZRAM
+	default n
+	help
+	  This option adds additional debugging code to the compressed
+	  RAM block device driver.
+
 config ZRAM_DEFAULT_DISKSIZE
 	int "Default size of zram in bytes"
 	depends on ZRAM
 	default 100663296
 	help
 	  Set default zram disk size (default ~ 96MB)
-
-config ZRAM_DEBUG
-	bool "Compressed RAM block device debug support"
-	depends on ZRAM
-	default y
-	help
-	  This option adds additional debugging code to the compressed
-	  RAM block device driver.
 
 config ZRAM_FOR_ANDROID
 	bool "Optimize zram behavior for android"
@@ -50,20 +58,16 @@ config ZRAM_FOR_ANDROID
 	help
 	  This option enables modified zram behavior optimized for android
 
-choice ZRAM_COMPRESS
-	prompt "compression method"
-	depends on ZRAM
-	default ZRAM_LZO
-	help
-	  Select the compression method used by zram.
-	  LZO is the default. Snappy compresses a bit worse (around ~2%) but
-	  much (~2x) faster, at least on x86-64.
 config ZRAM_LZO
-	bool "LZO compression"
-	select LZO_COMPRESS
-	select LZO_DECOMPRESS
+       bool "LZO compression"
+       default y
+       depends on ZRAM
+       select LZO_COMPRESS
+       select LZO_DECOMPRESS
+
 config ZRAM_SNAPPY
-	bool "Snappy compression"
-	depends on SNAPPY_COMPRESS
-	depends on SNAPPY_DECOMPRESS
-endchoice
+       bool "Snappy compression"
+       depends on ZRAM
+       select SNAPPY_COMPRESS
+       select SNAPPY_DECOMPRESS
+
