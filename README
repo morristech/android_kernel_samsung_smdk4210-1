@@ -1,0 +1,31 @@
+Hi Stalker.. lol kidding
+
+
+
+
+Hi there,
+
+
+
+Welcome to my github repo for Galaxy Note CM10.1 kernel.
+To build this kernel, you will need to put in some efforts.
+If you are a kernel developer or a recognised developer or a kernel virtuso and wish to contribute here, send me a PM on XDA.
+
+Before you read ahead, make sure you are able to build CM10.1 ROM for N7000.
+
+Now sync this repo on your system.
+
+Goto Kernel/Samsung and delete contents of smdk4210.
+(You can get back original deleted stuff by repo sync in ~/android/system)
+
+Paste in the contents from my repo.
+
+Goto ~/android/system via terminal
+
+Type 
+
+. build.sh n7000 kernel
+
+It is advisable to run as root.
+
+
