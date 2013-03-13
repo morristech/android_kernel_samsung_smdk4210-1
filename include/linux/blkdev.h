@@ -275,6 +275,7 @@ struct request_queue
 	struct request_list	rq;
 
 	request_fn_proc		*request_fn;
+	request_fn_proc    	*urgent_request_fn; 
 	make_request_fn		*make_request_fn;
 	prep_rq_fn		*prep_rq_fn;
 	unprep_rq_fn		*unprep_rq_fn;
@@ -350,6 +351,8 @@ struct request_queue
 	struct list_head	timeout_list;
 
 	struct queue_limits	limits;
+	bool      notified_urgent;
+  	bool      dispatched_urgent; 
 
 	/*
 	 * sg stuff
@@ -657,6 +660,8 @@ extern struct request *blk_make_request(struct request_queue *, struct bio *,
 					gfp_t);
 extern void blk_insert_request(struct request_queue *, struct request *, int, void *);
 extern void blk_requeue_request(struct request_queue *, struct request *);
+extern int blk_reinsert_request(struct request_queue *q, struct request *rq);
+extern bool blk_reinsert_req_sup(struct request_queue *q); 
 extern void blk_add_request_payload(struct request *rq, struct page *page,
 		unsigned int len);
 extern int blk_rq_check_limits(struct request_queue *q, struct request *rq);
