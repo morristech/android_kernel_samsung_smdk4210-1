@@ -1,5 +1,5 @@
 /*
- * FIFO I/O scheduler 
+ * FIFO I/O scheduler (_really_ does no-op)
  */
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
@@ -71,6 +71,7 @@ static struct elevator_type elevator_fifo = {
 static int __init fifo_init(void)
 {
 	elv_register(&elevator_fifo);
+
 	return 0;
 }
 
@@ -85,5 +86,3 @@ module_exit(fifo_exit);
 MODULE_AUTHOR("Aaron Carroll");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("No-op IO scheduler that actually does nothing");
-
-
