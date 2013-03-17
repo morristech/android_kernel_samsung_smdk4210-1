@@ -18,6 +18,9 @@ struct cfq_io_context {
 	unsigned long ttime_samples;
 	unsigned long ttime_mean;
 
+	unsigned int raising_time_left; // For BFQv6
+	unsigned int saved_idle_window; // For BFQv6
+
 	struct list_head queue_list;
 	struct hlist_node cic_list;
 
