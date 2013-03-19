@@ -2,6 +2,8 @@ make ARCH=arm CROSS_COMPILE=android-toolchain/bin/arm-eabi- mrproper;
 make clean;
 rm -f zImage;
 rm -f out/zImage;
+rm -f out/boot.img;
+rm -f boot.img;
 rm -f out/system/lib/modules/*;
 rm -f out/DH-Kernel_*;
 

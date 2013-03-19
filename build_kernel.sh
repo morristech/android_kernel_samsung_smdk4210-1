@@ -49,6 +49,7 @@ fi;
 # remove previous zImage files
 if [ -e ${KERNELDIR}/zImage ]; then
 	rm ${KERNELDIR}/zImage
+	rm ${KERNELDIR}/boot.img
 fi;
 if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
 	rm ${KERNELDIR}/arch/arm/boot/zImage
@@ -72,18 +73,27 @@ rm -f usr/initramfs_data.o
 
 cd ${KERNELDIR}/
 cp .config arch/arm/configs/${KERNEL_CONFIG}
+rm -rf out/system/lib/modules/*
+rm -rf out/temp/*
+rm -r out/temp
+mkdir -p out/system/lib/modules
+mkdir -p out/temp
 if [ $USER != "root" ]; then
 	make -j${NAMBEROFCPUS} modules || exit 1
+	make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/system modules_install || exit 1
 else
 	nice -n -15 make -j${NAMBEROFCPUS} modules || exit 1
+	nice -n -15 make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/temp modules_install || exit 1
 fi;
 
 # copy modules
-mkdir -p out/system/lib/modules
-find -name '*.ko' -exec cp -av {} out/system/lib/modules \;
-${CROSS_COMPILE}strip --strip-debug out/system/lib/modules/*.ko
-chmod 755 out/system/lib/modules/*
-
+cd out
+find -name '*.ko' -exec cp -av {} system/lib/modules \;
+${CROSS_COMPILE}strip --strip-debug system/lib/modules/*.ko
+chmod 755 system/lib/modules/*
+cd ..
+rm -rf out/temp/*
+rm -r out/temp
 if [ $USER != "root" ]; then
 	time make -j${NAMBEROFCPUS} zImage
 else
@@ -92,13 +102,14 @@ fi;
 
 if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
 	${KERNELDIR}/mkshbootimg.py ${KERNELDIR}/zImage ${KERNELDIR}/arch/arm/boot/zImage ${KERNELDIR}/payload.tar.xz ${KERNELDIR}/recovery.tar.xz
-
-	# copy all needed to out kernel folder
-	rm ${KERNELDIR}/out/zImage
-	rm ${KERNELDIR}/out/DH-Kernel_*
 	stat ${KERNELDIR}/zImage
-	GETVER=`grep 'DH-Kernel v.*' arch/arm/configs/${KERNEL_CONFIG} | sed 's/.* .//g' | sed 's/".*//g'`
-	cp ${KERNELDIR}/zImage /${KERNELDIR}/out/
+	./acp -fp zImage boot.img
+	# copy all needed to out kernel folder
+	rm ${KERNELDIR}/out/boot.img
+	rm ${KERNELDIR}/out/DH-Kernel_*
+	stat ${KERNELDIR}/boot.img
+	GETVER=`grep 'DH-Kernel_v.*' arch/arm/configs/${KERNEL_CONFIG} | sed 's/.*_.//g' | sed 's/".*//g'`
+	cp ${KERNELDIR}/boot.img /${KERNELDIR}/out/
 	cd ${KERNELDIR}/out/
 	if [ $HOST_CHECK == Ubuntu - Phoenix ]; then
 		zip -r DH-Kernel_v${GETVER}-`date +"[%m-%d]-[%H-%M]"`.zip .
