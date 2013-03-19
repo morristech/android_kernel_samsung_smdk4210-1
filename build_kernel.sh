@@ -111,11 +111,7 @@ if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
 	GETVER=`grep 'DH-Kernel_v.*' arch/arm/configs/${KERNEL_CONFIG} | sed 's/.*_.//g' | sed 's/".*//g'`
 	cp ${KERNELDIR}/boot.img /${KERNELDIR}/out/
 	cd ${KERNELDIR}/out/
-	if [ $HOST_CHECK == Ubuntu - Phoenix ]; then
-		zip -r DH-Kernel_v${GETVER}-`date +"[%m-%d]-[%H-%M]"`.zip .
-	else
-		zip -r DH-Kernel_v${GETVER}-nightly-`date +"[%m-%d]-[%H-%M]"`.zip .
-	fi
+	zip -r DH-Kernel_v${GETVER}-`date +"[%m-%d]-[%H-%M]"`.zip .
 	STATUS=`adb get-state` >> /dev/null;
 	if [ "$STATUS" == "device" ]; then
 		read -p "Push kernel to android (y/n)?"
