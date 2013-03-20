@@ -29,6 +29,7 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
+#include <linux/earlysuspend.h>
 
 #include <trace/events/power.h>
 
@@ -99,7 +100,6 @@ static void unlock_policy_rwsem_write(int cpu)
 	BUG_ON(policy_cpu == -1);
 	up_write(&per_cpu(cpu_policy_rwsem, policy_cpu));
 }
-
 
 /* internal prototypes */
 static int __cpufreq_governor(struct cpufreq_policy *policy,
@@ -552,11 +552,6 @@ static ssize_t show_scaling_setspeed(struct cpufreq_policy *policy, char *buf)
 
 	return policy->governor->show_setspeed(policy, buf);
 }
-/* sysfs interface for UV control */
-extern ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf);
-extern ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
-                                      const char *buf, size_t count);
-
 
 /**
  * show_scaling_driver - show the current cpufreq HW/BIOS limitation
@@ -587,8 +582,6 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
-/* UV table */
-cpufreq_freq_attr_rw(UV_mV_table);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -602,7 +595,6 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
-	&UV_mV_table.attr,
 	NULL
 };
 
@@ -769,7 +761,7 @@ static int cpufreq_add_dev_symlink(unsigned int cpu,
 
 	for_each_cpu(j, policy->cpus) {
 		struct cpufreq_policy *managed_policy;
-		struct sys_device *cpu_sys_dev;
+		struct sys_device *cpu_dev;
 
 		if (j == cpu)
 			continue;
@@ -778,8 +770,8 @@ static int cpufreq_add_dev_symlink(unsigned int cpu,
 
 		pr_debug("CPU %u already managed, adding link\n", j);
 		managed_policy = cpufreq_cpu_get(cpu);
-		cpu_sys_dev = get_cpu_sysdev(j);
-		ret = sysfs_create_link(&cpu_sys_dev->kobj, &policy->kobj,
+		cpu_dev = get_cpu_sysdev(j);
+		ret = sysfs_create_link(&cpu_dev->kobj, &policy->kobj,
 					"cpufreq");
 		if (ret) {
 			cpufreq_cpu_put(managed_policy);
@@ -1015,7 +1007,7 @@ static int __cpufreq_remove_dev(struct sys_device *sys_dev)
 	struct kobject *kobj;
 	struct completion *cmp;
 #ifdef CONFIG_SMP
-	struct sys_device *cpu_sys_dev;
+	struct sys_device *cpu_dev;
 	unsigned int j;
 #endif
 
@@ -1079,8 +1071,8 @@ static int __cpufreq_remove_dev(struct sys_device *sys_dev)
 			strncpy(per_cpu(cpufreq_cpu_governor, j),
 				data->governor->name, CPUFREQ_NAME_LEN);
 #endif
-			cpu_sys_dev = get_cpu_sysdev(j);
-			kobj = &cpu_sys_dev->kobj;
+			cpu_dev = get_cpu_sysdev(j);
+			kobj = &cpu_dev->kobj;
 			unlock_policy_rwsem_write(cpu);
 			sysfs_remove_link(kobj, "cpufreq");
 			lock_policy_rwsem_write(cpu);
@@ -1259,6 +1251,12 @@ out:
 }
 EXPORT_SYMBOL(cpufreq_get);
 
+//static struct subsys_interface cpufreq_interface = {
+//	.name		= "cpufreq",
+//	.subsys		= &cpu_subsys,
+//	.add_dev	= cpufreq_add_dev,
+//	.remove_dev	= cpufreq_remove_dev,
+//};
 static struct sysdev_driver cpufreq_sysdev_driver = {
 	.add		= cpufreq_add_dev,
 	.remove		= cpufreq_remove_dev,
@@ -1652,9 +1650,6 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	data->min = policy->min;
 	data->max = policy->max;
 
-	pr_debug("new min and max freqs are %u - %u kHz\n",
-					data->min, data->max);
-
 	if (cpufreq_driver->setpolicy) {
 		data->policy = policy->policy;
 		pr_debug("setting range\n");
@@ -1782,6 +1777,9 @@ static struct notifier_block __refdata cpufreq_cpu_notifier = {
     .notifier_call = cpufreq_cpu_callback,
 };
 
+#if defined(CONFIG_CPU_UNDERVOLTING)
+void create_standard_UV_interfaces(void);
+#endif
 /*********************************************************************
  *               REGISTER / UNREGISTER CPUFREQ DRIVER                *
  *********************************************************************/
@@ -1838,15 +1836,17 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
 		if (ret) {
 			pr_debug("no CPU initialized for driver %s\n",
 							driver_data->name);
-			goto err_sysdev_unreg;
+			goto err_if_unreg;
 		}
 	}
 
 	register_hotcpu_notifier(&cpufreq_cpu_notifier);
 	pr_debug("driver %s up and running\n", driver_data->name);
-
+#if defined(CONFIG_CPU_UNDERVOLTING)
+	create_standard_UV_interfaces();
+#endif
 	return 0;
-err_sysdev_unreg:
+err_if_unreg:
 	sysdev_driver_unregister(&cpu_sysdev_class,
 			&cpufreq_sysdev_driver);
 err_null_driver:
@@ -1875,7 +1875,8 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
 
 	pr_debug("unregistering driver %s\n", driver->name);
 
-	sysdev_driver_unregister(&cpu_sysdev_class, &cpufreq_sysdev_driver);
+	sysdev_driver_unregister(&cpu_sysdev_class,
+			&cpufreq_sysdev_driver);
 	unregister_hotcpu_notifier(&cpufreq_cpu_notifier);
 
 	spin_lock_irqsave(&cpufreq_driver_lock, flags);
@@ -1885,6 +1886,60 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(cpufreq_unregister_driver);
+
+static void powersave_early_suspend(struct early_suspend *handler)
+{
+	int cpu;
+
+	for_each_online_cpu(cpu) {
+		struct cpufreq_policy *cpu_policy, new_policy;
+
+		cpu_policy = cpufreq_cpu_get(cpu);
+		if (!cpu_policy)
+			continue;
+		if (cpufreq_get_policy(&new_policy, cpu))
+			goto out;
+		printk(KERN_INFO
+			"%s: set cpu%d freq in the %u-%u KHz range\n",
+			__func__, cpu, new_policy.min, new_policy.max);
+		__cpufreq_set_policy(cpu_policy, &new_policy);
+		cpu_policy->user_policy.policy = cpu_policy->policy;
+		cpu_policy->user_policy.governor = cpu_policy->governor;
+out:
+		cpufreq_cpu_put(cpu_policy);
+	}
+}
+
+static void powersave_late_resume(struct early_suspend *handler)
+{
+	int cpu;
+
+	for_each_online_cpu(cpu) {
+		struct cpufreq_policy *cpu_policy, new_policy;
+
+		cpu_policy = cpufreq_cpu_get(cpu);
+		if (!cpu_policy)
+			continue;
+		if (cpufreq_get_policy(&new_policy, cpu))
+			goto out;
+		new_policy.max = cpu_policy->user_policy.max;
+		new_policy.min = cpu_policy->user_policy.min;
+		printk(KERN_INFO
+			"%s: set cpu%d freq in the %u-%u KHz range\n",
+			__func__, cpu, new_policy.min, new_policy.max);
+		__cpufreq_set_policy(cpu_policy, &new_policy);
+		cpu_policy->user_policy.policy = cpu_policy->policy;
+		cpu_policy->user_policy.governor = cpu_policy->governor;
+out:
+		cpufreq_cpu_put(cpu_policy);
+	}
+}
+
+static struct early_suspend _powersave_early_suspend = {
+	.suspend = powersave_early_suspend,
+	.resume = powersave_late_resume,
+	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+};
 
 static int __init cpufreq_core_init(void)
 {
@@ -1899,6 +1954,7 @@ static int __init cpufreq_core_init(void)
 						&cpu_sysdev_class.kset.kobj);
 	BUG_ON(!cpufreq_global_kobject);
 	register_syscore_ops(&cpufreq_syscore_ops);
+	register_early_suspend(&_powersave_early_suspend);
 
 	return 0;
 }
