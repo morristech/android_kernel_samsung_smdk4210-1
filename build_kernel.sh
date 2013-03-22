@@ -7,7 +7,7 @@
 # cd /bin                                                                     #
 # rm -f sh                                                                    #
 # ln -s bash sh                                                               #
-# now go back to kernel folder and run:                                       #                                                         #
+# now go back to kernel folder and run:                                       # #                                                         		      #
 # sh clean_kernel.sh                                                          #
 #                                                                             #
 # Now you can build my kernel.                                                #
@@ -40,6 +40,7 @@ if [ "${1}" != "" ]; then
 fi;
 
 if [ ! -f ${KERNELDIR}/.config ]; then
+	echo "***** Writing Config *****"
 	cp ${KERNELDIR}/arch/arm/configs/${KERNEL_CONFIG} .config
 	make ${KERNEL_CONFIG}
 fi;
@@ -61,23 +62,32 @@ for i in $OLDMODULES; do
 	rm -f $i
 done;
 
+echo "***** Removing Old Compile Temp Files *****"
+echo "***** Please run 'sh clean_kernel.sh' for Complete Clean *****"
 # remove previous initramfs files
-if [ -f "/tmp/cpio*" ]; then
-	echo "removing old temp iniramfs_tmp.cpio"
-	rm -rf /tmp/cpio*
-fi;
+rm -rf /tmp/cpio* >> /dev/null
+rm -rf out/system/lib/modules/* >> /dev/null
+rm -rf out/temp/* >> /dev/null
+rm -r out/temp >> /dev/null
+
 
 # clean initramfs old compile data
-rm -f usr/initramfs_data.cpio
-rm -f usr/initramfs_data.o
+rm -f usr/initramfs_data.cpio >> /dev/null
+rm -f usr/initramfs_data.o >> /dev/null
 
 cd ${KERNELDIR}/
-cp .config arch/arm/configs/${KERNEL_CONFIG}
-rm -rf out/system/lib/modules/*
-rm -rf out/temp/*
-rm -r out/temp
+
+# always get latest defconfig
+if [ -e .config ]; then
+	echo "***** Fetching Latest Config *****"
+	cp arch/arm/configs/${KERNEL_CONFIG} .config
+fi
+
 mkdir -p out/system/lib/modules
 mkdir -p out/temp
+
+# make modules and install
+echo "***** Compiling modules *****"
 if [ $USER != "root" ]; then
 	make -j${NAMBEROFCPUS} modules || exit 1
 	make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/system modules_install || exit 1
@@ -87,31 +97,58 @@ else
 fi;
 
 # copy modules
+echo "***** Copying modules *****"
 cd out
 find -name '*.ko' -exec cp -av {} system/lib/modules \;
 ${CROSS_COMPILE}strip --strip-debug system/lib/modules/*.ko
 chmod 755 system/lib/modules/*
 cd ..
-rm -rf out/temp/*
-rm -r out/temp
+
+# remove temp module files generated during compile
+echo "***** Removing temp module stage 2 files *****"
+rm -rf out/temp/* >> /dev/null
+rm -r out/temp  >> /dev/null
+
+# check if ramdisk available
+if [ ! -e ${KERNELDIR}/ramdisk.cpio ]; then
+	cd ../DH-initramfs
+	./mkbootfs root > ramdisk.cpio
+	cd ${KERNELDIR}
+	cp ../DH-initramfs/ramdisk.cpio ${KERNELDIR}
+	echo "***** Ramdisk Generated *****"
+fi;
+
+# check if recovery available
+if [ ! -e ${KERNELDIR}/ramdisk-recovery.cpio ]; then
+	cd ../DH-initramfs
+	./mkbootfs recovery/root > ramdisk-recovery.cpio
+	cd ${KERNELDIR}
+	cp ../DH-initramfs/ramdisk-recovery.cpio ${KERNELDIR}
+	echo "***** Recovery Generated *****"
+fi;
+
+# make zImage
+echo "***** Compiling kernel *****"
 if [ $USER != "root" ]; then
 	time make -j${NAMBEROFCPUS} zImage
 else
 	time nice -n -15 make -j${NAMBEROFCPUS} zImage
 fi;
 
+echo "***** Final Touch for Kernel *****"
 if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
 	${KERNELDIR}/mkshbootimg.py ${KERNELDIR}/zImage ${KERNELDIR}/arch/arm/boot/zImage ${KERNELDIR}/payload.tar.xz ${KERNELDIR}/recovery.tar.xz
 	stat ${KERNELDIR}/zImage
 	./acp -fp zImage boot.img
 	# copy all needed to out kernel folder
-	rm ${KERNELDIR}/out/boot.img
-	rm ${KERNELDIR}/out/DH-Kernel_*
+	rm ${KERNELDIR}/out/boot.img >> /dev/null
+	rm ${KERNELDIR}/out/DH-Kernel_* >> /dev/null
 	stat ${KERNELDIR}/boot.img
 	GETVER=`grep 'DH-Kernel_v.*' arch/arm/configs/${KERNEL_CONFIG} | sed 's/.*_.//g' | sed 's/".*//g'`
 	cp ${KERNELDIR}/boot.img /${KERNELDIR}/out/
 	cd ${KERNELDIR}/out/
 	zip -r DH-Kernel_v${GETVER}-`date +"[%m-%d]-[%H-%M]"`.zip .
+	echo "***** Ready to Roar *****"
 	STATUS=`adb get-state` >> /dev/null;
 	if [ "$STATUS" == "device" ]; then
 		read -p "Push kernel to android (y/n)?"
