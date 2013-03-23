@@ -1067,9 +1067,6 @@ static void calibration_check_func(struct mxt540e_data *data)
 
 }
 
-
-void (*mxt540e_touch_cb)(void) = NULL;
-
 static void report_input_data(struct mxt540e_data *data)
 {
 	int i;
@@ -1170,9 +1167,6 @@ static void report_input_data(struct mxt540e_data *data)
 		else
 			schedule_delayed_work(&data->cal_check_dwork,
 					msecs_to_jiffies(1400));
-	}
-	if (touch_is_pressed && mxt540e_touch_cb != NULL) {
-			(*mxt540e_touch_cb)();
 	}
 }
 
