@@ -77,12 +77,6 @@ rm -f usr/initramfs_data.o >> /dev/null
 
 cd ${KERNELDIR}/
 
-# always get latest defconfig
-if [ -e .config ]; then
-	echo "***** Fetching Latest Config *****"
-	cp arch/arm/configs/${KERNEL_CONFIG} .config
-fi
-
 mkdir -p out/system/lib/modules
 mkdir -p out/temp
 
