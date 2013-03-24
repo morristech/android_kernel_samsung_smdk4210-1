@@ -50,19 +50,17 @@ static uint32_t lowmem_debug_level = 2;
 static int lowmem_adj[] = {
 	0,
 	1,
-	2,
-	4,
-	9,
-	15,
+	6,
+	12,
 };
 static int lowmem_adj_size = ARRAY_SIZE(lowmem_adj);
 static int lowmem_minfree[] = {
-	2 * 1024,	/* 8MB */
-	5 * 512,	/* 10MB */
-	3 * 1024,	/* 12MB */
-	7 * 512,	/* 14MB */
-	8 * 1024,	/* 32MB */
-	16 * 1024,	/* 64MB */
+	2048,
+	3072,
+	6144,
+	15360,
+	17920,
+	20480,
 };
 static int lowmem_minfree_size = ARRAY_SIZE(lowmem_minfree);
 
