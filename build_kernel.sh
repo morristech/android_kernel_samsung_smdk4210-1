@@ -131,7 +131,7 @@ fi;
 
 echo "***** Final Touch for Kernel *****"
 if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
-	${KERNELDIR}/mkshbootimg.py ${KERNELDIR}/zImage ${KERNELDIR}/arch/arm/boot/zImage ${KERNELDIR}/payload.tar.xz ${KERNELDIR}/recovery.tar.xz
+	cp ${KERNELDIR}/arch/arm/boot/zImage ${KERNELDIR}/zImage
 	stat ${KERNELDIR}/zImage
 	./acp -fp zImage boot.img
 	# copy all needed to out kernel folder
