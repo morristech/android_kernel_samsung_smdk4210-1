@@ -84,7 +84,7 @@ mkdir -p out/temp
 echo "***** Compiling modules *****"
 if [ $USER != "root" ]; then
 	make -j${NAMBEROFCPUS} modules || exit 1
-	make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/system modules_install || exit 1
+	make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/temp modules_install || exit 1
 else
 	nice -n -15 make -j${NAMBEROFCPUS} modules || exit 1
 	nice -n -15 make -j${NAMBEROFCPUS} INSTALL_MOD_PATH=out/temp modules_install || exit 1
@@ -93,9 +93,9 @@ fi;
 # copy modules
 echo "***** Copying modules *****"
 cd out
-find -name '*.ko' -exec cp -av {} system/lib/modules \;
-${CROSS_COMPILE}strip --strip-debug system/lib/modules/*.ko
-chmod 755 system/lib/modules/*
+find -name '*.ko' -exec cp -av {} "${KERNELDIR}/out/system/lib/modules" \;
+${CROSS_COMPILE}strip --strip-debug "${KERNELDIR}"/out/system/lib/modules/*.ko
+chmod 755 "${KERNELDIR}"/out/system/lib/modules/*
 cd ..
 
 # remove temp module files generated during compile
@@ -143,13 +143,29 @@ if [ -e ${KERNELDIR}/arch/arm/boot/zImage ]; then
 	cd ${KERNELDIR}/out/
 	zip -r DH-Kernel_v${GETVER}-`date +"[%m-%d]-[%H-%M]"`.zip .
 	echo "***** Ready to Roar *****"
-	STATUS=`adb get-state` >> /dev/null;
-	if [ "$STATUS" == "device" ]; then
-		read -p "Push kernel to android (y/n)?"
-		if [ "$REPLY" == "y" ]; then
-			adb push ${KERNELDIR}/out/DH-Kernel_v*.zip /sdcard/;
-		fi;
+	while [ "$push_ok" != "y" ] && [ "$push_ok" != "n" ]
+	do
+	      read -p "Do you want to push the kernel to the sdcard of your device? (y/n)" push_ok
+	done
+	if [ "$push_ok" == "y" ]
+		then
+		STATUS=`adb get-state` >> /dev/null;
+		while [ "$STATUS" != "device" ]
+		do
+			sleep 1
+			STATUS=`adb get-state` >> /dev/null
+		done
+		adb push ${KERNELDIR}/out/DH-Kernel_v*.zip /sdcard/
+	else
+		echo "Finished!"
+		exit 0;
 	fi;
+# 	if [ "$STATUS" == "device" ]; then
+# 		read -p "Push kernel to android (y/n)?"
+# 		if [ "$REPLY" == "y" ]; then
+# 			adb push ${KERNELDIR}/out/DH-Kernel_v*.zip /sdcard/;
+# 		fi;
+# 	fi;
 else
 	echo "Kernel STUCK in BUILD!"
 fi;
