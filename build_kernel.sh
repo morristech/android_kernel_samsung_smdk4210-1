@@ -26,7 +26,6 @@ export KERNEL_CONFIG="dragonheart_n7000_defconfig"
 
 # build script
 export USER=`whoami`
-export HOST_CHECK=`uname -n`
 export OLDMODULES=`find -name *.ko`
 
 # system compiler
@@ -92,9 +91,11 @@ fi;
 
 # copy modules
 echo "***** Copying modules *****"
+cd out
 find -name '*.ko' -exec cp -av {} "${KERNELDIR}/out/system/lib/modules" \;
 ${CROSS_COMPILE}strip --strip-debug "${KERNELDIR}"/out/system/lib/modules/*.ko
 chmod 755 "${KERNELDIR}"/out/system/lib/modules/*
+cd ..
 
 # remove temp module files generated during compile
 echo "***** Removing temp module stage 2 files *****"
