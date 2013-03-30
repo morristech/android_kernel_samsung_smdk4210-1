@@ -89,3 +89,6 @@ obj-$(CONFIG_MACH_M0_CTC)   += cw_tty.o
 # Secure OS Mobicore Interface
 obj-$(CONFIG_MOBICORE_SUPPORT)  += tzic.o
 obj-$(CONFIG_CPU_UNDERVOLTING)	+= cpu_undervolting.o
+
+# BLNv9
+obj-$(CONFIG_GENERIC_BLN) += bln.o
