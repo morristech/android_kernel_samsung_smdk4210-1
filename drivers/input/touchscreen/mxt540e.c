@@ -2564,7 +2564,7 @@ static int __devinit mxt540e_probe(struct i2c_client *client,
 	set_bit(MT_TOOL_FINGER, input_dev->keybit);
 	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
-	input_mt_init_slots(input_dev, MAX_FINGER_NUM);
+	input_mt_init_slots(input_dev, MAX_FINGER_NUM, 0);
 
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->min_x,
 				pdata->max_x, 0, 0);
